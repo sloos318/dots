@@ -1,9 +1,5 @@
 body {
-    display: grid;
-    justify-content: center;
-    align-content: center;
     background-color: #0e100f;
-    height: 100svh;
     margin: 0;
     overflow: hidden;
     user-select: none;
@@ -14,6 +10,9 @@ body {
     display: flex;
     flex-direction: column;
     gap: var(--gap);
+    width: max-content;
+    min-height: 100vh;
+    justify-content: center;
 }
 
 .row {
@@ -22,23 +21,11 @@ body {
 }
 
 .cell {
-    --size: 24px;
-    width: var(--size);
-    height: var(--size);
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
     background-color: #FFD256;
     border-radius: 50%;
     will-change: transform;
     cursor: pointer;
-    z-index: 3;
-}
-
-h1 {
-    position: absolute;
-    z-index: 2;
-    color: white;
-    font-size: 20vw;
-    font-family: Poppins, sans-serif;
-    font-weight: bold;
-    align-self: center;
-    justify-self: center;
 }

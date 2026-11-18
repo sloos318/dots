@@ -1,35 +1,68 @@
+
 const grid = document.querySelector('.grid');
 
-const x_max = 20;
-const y_max = 25;
+// Grid settings
+const dotSize = 12;
+const gap = 12;
 
-// Generate the grid using regular JavaScript
-for (let x = 0; x < x_max; x++) {
-    const row = document.createElement('div');
-    row.classList.add('row');
+// Interaction settings
+const pull_distance = 250;
+const pull_strength = 0.95;
 
-    for (let y = 0; y < y_max; y++) {
-        const cell = document.createElement('div');
-        cell.classList.add('cell');
-
-        cell.dataset.x = x;
-        cell.dataset.y = y;
-
-        row.appendChild(cell);
-    }
-
-    grid.appendChild(row);
-}
-
-const rows = [...document.querySelectorAll('.row')];
-const cells = [...document.querySelectorAll('.cell')];
+let rows = [];
+let cells = [];
 
 let clicked = false;
 let reset_all = false;
 
-const pull_distance = 700;
 
-const updateCellPositions = () => {
+// --------------------------------
+// CREATE FULLSCREEN GRID
+// --------------------------------
+
+function createGrid() {
+    grid.innerHTML = '';
+
+    const columns = Math.ceil(window.innerWidth / (dotSize + gap));
+    const rowCount = Math.ceil(window.innerHeight / (dotSize + gap));
+
+    for (let x = 0; x < rowCount; x++) {
+        const row = document.createElement('div');
+        row.classList.add('row');
+
+        for (let y = 0; y < columns; y++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+
+            cell.dataset.x = x;
+            cell.dataset.y = y;
+
+            row.appendChild(cell);
+        }
+
+        grid.appendChild(row);
+    }
+
+    // Refresh references
+    rows = [...document.querySelectorAll('.row')];
+    cells = [...document.querySelectorAll('.cell')];
+
+    updateCellPositions();
+
+    // Add click interaction
+    cells.forEach((cell, i) => {
+        cell.addEventListener('pointerup', (e) => {
+            handleCellClick(e, i);
+        });
+    });
+}
+
+
+// --------------------------------
+// UPDATE DOT POSITIONS
+// --------------------------------
+
+function updateCellPositions() {
     cells.forEach((cell) => {
         const rect = cell.getBoundingClientRect();
 
@@ -38,40 +71,55 @@ const updateCellPositions = () => {
             y: (rect.top + rect.bottom) / 2,
         };
     });
-};
+}
 
-const handleCellClick = (e, i) => {
+
+// --------------------------------
+// CLICK EXPLOSION ANIMATION
+// --------------------------------
+
+function handleCellClick(e, i) {
     if (clicked) return;
 
     clicked = true;
 
-    gsap.to('.cell', {
+    gsap.to(cells, {
         duration: 1.6,
+
         physics2D: {
-            velocity: 'random(400, 1000)',
+            velocity: 'random(200, 500)',
             angle: 'random(250, 290)',
-            gravity: 2000
+            gravity: 1500
         },
+
         stagger: {
             grid: [rows.length, rows[0].children.length],
             from: i,
             amount: 0.3
         },
+
         onComplete: function () {
             this.timeScale(-1.3);
         },
+
         onReverseComplete: () => {
             clicked = false;
             reset_all = true;
             handlePointerMove();
-        },
+        }
     });
-};
+}
 
-const handlePointerMove = (e = { pageX: -pull_distance, pageY: -pull_distance }) => {
+
+// --------------------------------
+// CURSOR INTERACTION
+// --------------------------------
+
+function handlePointerMove(e) {
     if (clicked) return;
 
-    const { pageX: pointer_x, pageY: pointer_y } = e;
+    const pointer_x = e ? e.clientX : -pull_distance;
+    const pointer_y = e ? e.clientY : -pull_distance;
 
     cells.forEach((cell) => {
         const diff_x = pointer_x - cell.center_position.x;
@@ -82,21 +130,18 @@ const handlePointerMove = (e = { pageX: -pull_distance, pageY: -pull_distance })
         );
 
         if (distance < pull_distance) {
-            const percent = distance / pull_distance;
 
-            cell.pulled = true;
+            const percent = 1 - (distance / pull_distance);
 
             gsap.to(cell, {
                 zIndex: 1,
-                duration: 0.2,
-                x: diff_x * percent,
-                y: diff_y * percent,
+                duration: 0.3,
+                x: diff_x * percent * pull_strength,
+                y: diff_y * percent * pull_strength,
+                overwrite: true
             });
 
-        } else {
-            if (!cell.pulled) return;
-
-            cell.pulled = false;
+        } else if (cell.pulled) {
 
             gsap.to(cell, {
                 zIndex: 3,
@@ -104,10 +149,14 @@ const handlePointerMove = (e = { pageX: -pull_distance, pageY: -pull_distance })
                 x: 0,
                 y: 0,
                 ease: "elastic.out(1, 0.3)",
+                overwrite: true
             });
         }
+
+        cell.pulled = distance < pull_distance;
     });
 
+    // Reset all dots after explosion
     if (reset_all) {
         reset_all = false;
 
@@ -116,25 +165,29 @@ const handlePointerMove = (e = { pageX: -pull_distance, pageY: -pull_distance })
             x: 0,
             y: 0,
             ease: "elastic.out(1, 0.3)",
+            overwrite: true
         });
     }
-};
+}
 
-const init = () => {
-    updateCellPositions();
 
-    window.addEventListener('resize', updateCellPositions);
+// --------------------------------
+// INITIALIZE
+// --------------------------------
+
+function init() {
+    createGrid();
+
     window.addEventListener('pointermove', handlePointerMove);
+
+    window.addEventListener('resize', () => {
+        createGrid();
+        handlePointerMove();
+    });
 
     document.body.addEventListener('pointerleave', () => {
         handlePointerMove();
     });
-
-    cells.forEach((cell, i) => {
-        cell.addEventListener('pointerup', (e) => {
-            handleCellClick(e, i);
-        });
-    });
-};
+}
 
 init();
